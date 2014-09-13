@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 func serveSingle(pattern string, filename string) {
@@ -28,9 +28,15 @@ var db *sql.DB
 func main() {
 	log.Print("Starting...")
 	var err error
-	db, err = sql.Open("mysql", "/test")
+	connection := "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
+	db, err = sql.Open("postgres", connection)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Println(err)
 	}
 
 	// Mandatory root-based resources
@@ -67,7 +73,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	v, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
-		log.Println("error parsing stats url: ", err)
+		log.Println("error parsing raw url: ", err)
 	}
 
 	placeIds := make([]string, 0)
@@ -75,12 +81,12 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 		placeIds = placesUrlArray
 	}
 
-	questionMarks := make([]string, len(placeIds))
+	queryParams := make([]string, len(placeIds))
 	for i := 0; i < len(placeIds); i++ {
-		questionMarks[i] = "?"
+		queryParams[i] = fmt.Sprintf("$%d", i+1)
 	}
 
-	queryString := "select place_id, timer_ms from timer where place_id in (" + strings.Join(questionMarks, ",") + ")"
+	queryString := "SELECT place_id, time_ms FROM timer WHERE place_id IN (" + strings.Join(queryParams, ",") + ")"
 
 	asInterface := make([]interface{}, len(placeIds))
 
@@ -89,12 +95,11 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.Query(queryString, asInterface...)
-
-	defer rows.Close()
 	if err != nil {
 		returnErr(err, w)
 		return
 	}
+	defer rows.Close()
 
 	collection := make(map[string][]int)
 
@@ -193,7 +198,7 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 
-	_, err = db.Exec("insert into timer set place_id=?, timer_ms=?, ip=INET_ATON(?)", placeID, timeMS, ip)
+	_, err = db.Exec("INSERT INTO timer (place_id, time_ms, ip) VALUES ($1, $2, $3)", placeID, timeMS, ip)
 	if err != nil {
 		log.Println("error inserting stat: ", err)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
