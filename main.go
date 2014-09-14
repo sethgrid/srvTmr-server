@@ -23,7 +23,7 @@ var DB *sql.DB
 var CONNECTION *string
 
 func init() {
-	defaultConnection := os.Getenv(SRVTMR_CONNECTION)
+	defaultConnection := os.Getenv("SRVTMR_CONNECTION")
 	if len(defaultConnection) == 0 {
 		defaultConnection = "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
 	}
