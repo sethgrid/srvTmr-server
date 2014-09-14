@@ -15,12 +15,17 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
 var DB *sql.DB
 var CONNECTION *string
+var START_TIME time.Time
+var READ_COUNT int64
+var WRITE_COUNT int64
 
 func init() {
 	defaultConnection := os.Getenv("SRVTMR_CONNECTION")
@@ -28,10 +33,13 @@ func init() {
 		defaultConnection = "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
 	}
 	CONNECTION = flag.String("connection", defaultConnection, "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
+	READ_COUNT = 0
+	WRITE_COUNT = 0
 }
 
 func main() {
-	log.Print("Starting...")
+	START_TIME = time.Now()
+	log.Printf("Starting at %s", START_TIME)
 	var err error
 	CONNECTION := "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
 	DB, err = sql.Open("postgres", CONNECTION)
@@ -48,6 +56,8 @@ func main() {
 	serveSingle("/sitemap.xml", "./sitemap.xml")
 	serveSingle("/favicon.ico", "./favicon.ico")
 	serveSingle("/robots.txt", "./robots.txt")
+
+	http.HandleFunc("/", indexHandler)
 
 	// submit a new stat or get the stats for a list of place ids
 	http.HandleFunc("/submit", submissionHandler)
@@ -77,7 +87,23 @@ func serveSingle(pattern string, filename string) {
 	})
 }
 
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	now := time.Now()
+	uptime := now.Unix() - START_TIME.Unix()
+
+	days := (uptime) / int64(60*60*24)
+	hours := (uptime - days*60*60*24) / int64(60*60)
+	minutes := (uptime - hours*60*60 - days*60*60*24) / int64(60)
+	seconds := (uptime - minutes*60 - hours*60*60 - days*60*60*24)
+
+	uptimeReport := fmt.Sprintf("Uptime: %dd:%dh:%dm:%ds [%d reads / %d writes]\n",
+		days, hours, minutes, seconds, READ_COUNT, WRITE_COUNT)
+
+	w.Write([]byte(uptimeReport))
+}
+
 func statsHandler(w http.ResponseWriter, r *http.Request) {
+	atomic.AddInt64(&READ_COUNT, 1)
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		log.Println("error parsing stats url: ", err)
@@ -189,6 +215,7 @@ func min(i []int) float32 {
 }
 
 func submissionHandler(w http.ResponseWriter, r *http.Request) {
+	atomic.AddInt64(&WRITE_COUNT, 1)
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		log.Println("error parsing stats url: ", err)
