@@ -1,10 +1,11 @@
 package main
 
-// TODO: db configuration, port configuration
+// TODO: DB configuration, port configuration
 
 import (
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -17,24 +18,23 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func serveSingle(pattern string, filename string) {
-	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filename)
-	})
-}
+var DB *sql.DB
+var CONNECTION *string
 
-var db *sql.DB
+func init() {
+	CONNECTION = flag.String("connection", "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable", "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
+}
 
 func main() {
 	log.Print("Starting...")
 	var err error
-	connection := "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
-	db, err = sql.Open("postgres", connection)
+	CONNECTION := "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
+	DB, err = sql.Open("postgres", CONNECTION)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Ping()
+	err = DB.Ping()
 	if err != nil {
 		log.Println(err)
 	}
@@ -66,6 +66,12 @@ func returnErr(err error, w http.ResponseWriter) {
 	w.Write([]byte(`{"error": "unable to fetch data"}`))
 }
 
+func serveSingle(pattern string, filename string) {
+	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filename)
+	})
+}
+
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
@@ -94,7 +100,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 		asInterface[i] = interface{}(v)
 	}
 
-	rows, err := db.Query(queryString, asInterface...)
+	rows, err := DB.Query(queryString, asInterface...)
 	if err != nil {
 		returnErr(err, w)
 		return
@@ -198,7 +204,7 @@ func submissionHandler(w http.ResponseWriter, r *http.Request) {
 
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 
-	_, err = db.Exec("INSERT INTO timer (place_id, time_ms, ip) VALUES ($1, $2, $3)", placeID, timeMS, ip)
+	_, err = DB.Exec("INSERT INTO timer (place_id, time_ms, ip) VALUES ($1, $2, $3)", placeID, timeMS, ip)
 	if err != nil {
 		log.Println("error inserting stat: ", err)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
