@@ -55,11 +55,6 @@ func main() {
 		log.Println(err)
 	}
 
-	// Mandatory root-based resources
-	serveSingle("/sitemap.xml", "./sitemap.xml")
-	serveSingle("/favicon.ico", "./favicon.ico")
-	serveSingle("/robots.txt", "./robots.txt")
-
 	http.HandleFunc("/", indexHandler)
 
 	// submit a new stat or get the stats for a list of place ids
@@ -82,13 +77,6 @@ func returnErr(err error, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(`{"error": "unable to fetch data"}`))
-}
-
-func serveSingle(pattern string, filename string) {
-	log.Println("serveSingle ", pattern)
-	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filename)
-	})
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
