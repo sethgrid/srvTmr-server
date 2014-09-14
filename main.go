@@ -41,9 +41,10 @@ func main() {
 	START_TIME = time.Now()
 	log.Printf("Starting at %s", START_TIME)
 	var err error
-	CONNECTION := "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
-	DB, err = sql.Open("postgres", CONNECTION)
+
+	DB, err = sql.Open("postgres", *CONNECTION)
 	if err != nil {
+		log.Println(CONNECTION)
 		log.Fatal(err)
 	}
 
