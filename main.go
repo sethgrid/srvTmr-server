@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 
@@ -22,7 +23,11 @@ var DB *sql.DB
 var CONNECTION *string
 
 func init() {
-	CONNECTION = flag.String("connection", "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable", "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
+	defaultConnection := os.Getenv(SRVTMR_CONNECTION)
+	if len(defaultConnection) == 0 {
+		defaultConnection = "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
+	}
+	CONNECTION = flag.String("connection", defaultConnection, "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
 }
 
 func main() {
