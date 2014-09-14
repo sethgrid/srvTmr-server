@@ -85,12 +85,14 @@ func returnErr(err error, w http.ResponseWriter) {
 }
 
 func serveSingle(pattern string, filename string) {
+	log.Println("serveSingle ", pattern)
 	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filename)
 	})
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("indexHandler ", r.RequestURI)
 	now := time.Now()
 	uptime := now.Unix() - START_TIME.Unix()
 
@@ -106,6 +108,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func statsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("statsHandler", r.RequestURI)
 	atomic.AddInt64(&READ_COUNT, 1)
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
@@ -218,6 +221,7 @@ func min(i []int) float32 {
 }
 
 func submissionHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("sumissionHandler ", r.RequestURI)
 	atomic.AddInt64(&WRITE_COUNT, 1)
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
