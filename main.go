@@ -26,6 +26,7 @@ var CONNECTION *string
 var START_TIME time.Time
 var READ_COUNT int64
 var WRITE_COUNT int64
+var PORT *int64
 
 func init() {
 	defaultConnection := os.Getenv("SRVTMR_CONNECTION")
@@ -33,6 +34,7 @@ func init() {
 		defaultConnection = "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
 	}
 	CONNECTION = flag.String("connection", defaultConnection, "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
+	PORT = flag.Int64("port", 5000, "port to use. default 5000 (heroku standard)")
 	READ_COUNT = 0
 	WRITE_COUNT = 0
 }
@@ -44,7 +46,7 @@ func main() {
 
 	DB, err = sql.Open("postgres", *CONNECTION)
 	if err != nil {
-		log.Println(CONNECTION)
+		log.Println(*CONNECTION)
 		log.Fatal(err)
 	}
 
@@ -64,8 +66,8 @@ func main() {
 	http.HandleFunc("/submit", submissionHandler)
 	http.HandleFunc("/stats", statsHandler)
 
-	log.Println("listening on :9999")
-	http.ListenAndServe(":9999", nil)
+	log.Printf("listening on :%d", *PORT)
+	http.ListenAndServe(fmt.Sprintf(":%d", *PORT), nil)
 }
 
 type Place struct {
