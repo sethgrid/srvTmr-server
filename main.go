@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -33,15 +34,34 @@ func init() {
 	if len(defaultConnection) == 0 {
 		defaultConnection = "postgres://sethammons@127.0.0.1:5432/sethammons?sslmode=disable"
 	}
+
+	var defaultPort int
+	var err error
+	defaultPortStr := os.Getenv("PORT")
+	if len(defaultPortStr) == 0 {
+		log.Println("using default 5000, ", defaultPortStr)
+		defaultPort = 5000
+	} else {
+		defaultPort, err = strconv.Atoi(defaultPortStr)
+	}
+
+	if err != nil {
+		log.Fatal("Unable to obtain port: ", err)
+	}
+
 	CONNECTION = flag.String("connection", defaultConnection, "postgres://[user]:[pw]@[host]:[port]/[database]?sslmode=[mode]")
-	PORT = flag.Int64("port", 5000, "port to use. default 5000 (heroku standard)")
+	PORT = flag.Int64("port", int64(defaultPort), "port to use; default 5000")
 	READ_COUNT = 0
 	WRITE_COUNT = 0
 }
 
 func main() {
+	flag.Parse()
 	START_TIME = time.Now()
 	log.Printf("Starting at %s", START_TIME)
+	log.Println(*CONNECTION)
+	log.Printf("listening on :%d", *PORT)
+
 	var err error
 
 	DB, err = sql.Open("postgres", *CONNECTION)
@@ -61,7 +81,6 @@ func main() {
 	http.HandleFunc("/submit", submissionHandler)
 	http.HandleFunc("/stats", statsHandler)
 
-	log.Printf("listening on :%d", *PORT)
 	http.ListenAndServe(fmt.Sprintf(":%d", *PORT), nil)
 }
 
